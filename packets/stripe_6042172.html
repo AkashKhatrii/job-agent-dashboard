@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stripe — Backend Engineer, Core Technology · Job Agent</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="../index.html">← Back to dashboard</a>
+<div class="card">
+  <span class="badge hi">82</span>
+  <h2 style="margin-top:8px">Stripe — Backend Engineer, Core Technology</h2>
+  <div class="muted">US-Remote, Chicago, Seattle, San Francisco
+   · 
+   · via greenhouse
+   · <a href="https://stripe.com/jobs/search?gh_jid=6042172" target="_blank" rel="noopener">original posting</a></div>
+  <div class="note"><b>Why it matched:</b> Backend Engineer title aligns directly with the candidate&#x27;s target roles and their Amazon SDE backend experience (high-TPS distributed systems, AWS, Java/Python) maps well to Stripe&#x27;s core backend work. Location (Seattle) and seniority fit are strong, though the lack of a job description prevents confirming specific tech-stack or requirement overlap.</div>
+  <div class="note"><b>What tailoring changed:</b> Reordered experience bullets to prioritize high-TPS distributed systems and cost/runtime optimization, which align with Stripe&#x27;s infrastructure focus. Moved Go to the top of languages and emphasized distributed systems in skills. Trimmed less relevant teaching details and kept the Raft project prominent to showcase distributed systems expertise.</div>
+  <div class="note"><b>Review status:</b> <span class="pill pending">pending</span> <span class="muted">via greenhouse_browser (browser) · queued 2026-10-01 04:25 UTC</span></div>
+  <p><a href="../review/267.html">Open the full review packet →</a></p>
+</div>
+<div class="card">
+  <h2>Tailored résumé</h2>
+  <div class="resume"><h1>Akash Khatri</h1>
+<p>Seattle, WA | +1 (801)-403-3512 | akash.m.khatri@gmail.com | LinkedIn | GitHub | Portfolio</p>
+<h2>Professional Experience</h2>
+<h3>Software Development Engineer — Amazon</h3>
+<p class="dateline"><em>Jun 2025 – Present</em></p>
+<ul>
+<li>Integrated Amazon Music’s in-app merch experience with centralized commerce services, enabling end-to-end merchandise ordering on a production system supporting <strong>4,000 TPS</strong>.</li>
+<li>Enabled production rollout of Amazon Music’s merch ordering backend (D2C + in-app purchase) by integrating checkout flows, building end-to-end integration tests, and deploying production canaries.</li>
+<li>Migrated data providers across <strong>TB-scale AWS Glue ETL pipelines</strong> powering artist performance analytics; reduced average job runtime by <strong>27% (22 min → 16 min)</strong> across all customer-facing data workflows.</li>
+<li>Eliminated redundant AWS Glue job execution across a non-production environment, cutting <strong>$50K+ in annual infrastructure costs</strong>.</li>
+<li>Migrated <strong>20+ dependent packages</strong> from hardcoded config definitions to runtime-managed AWS CDK constructs, eliminating manual config maintenance and deployment overhead across the testing infrastructure.</li>
+<li>Delivered a production release of Amazon Music for Artists across iOS, Android, and Web in a 2-week window by resolving <strong>15+ release-blocking bugs</strong>, authoring the release plan, and driving go/no-go decisions through beta to launch.</li>
+<li>Mentored a junior SDE-1 through full integration lifecycle; decomposed ambiguous requirements into scoped Jira epics and unblocked critical dependencies, delivering the project <strong>33% ahead of schedule (4 weeks vs. 6-week estimate)</strong>.</li>
+</ul>
+<h3>AI/ML Research Assistant — Kahlert School of Computing, University of Utah</h3>
+<p class="dateline"><em>Apr 2024 – May 2025</em></p>
+<ul>
+<li>First-authored “Sort it Like You Mean It” (<strong>PVLDB 2025</strong>) and built InsightSort, a GPT-4o semantic engine that recommends insightful sort options by discovering and joining relevant attributes from external datasets when existing columns are insufficient.</li>
+<li>Reduced column-discovery time <strong>67% (30s → 10s)</strong> by engineering a dual 384-dimensional HNSW vector index over a 150-column data lake, replacing O(N) brute-force scans with sub-linear ANN lookups.</li>
+<li>Designed a retrieval pipeline that fuses column similarity scores with embedding-based uniqueness signals to auto-generate DuckDB SQL joins, surfacing sort candidates and reducing manual data profiling to a single user confirmation step.</li>
+</ul>
+<h3>Graduate Teaching Assistant — Kahlert School of Computing, University of Utah</h3>
+<p class="dateline"><em>Jan 2024 – May 2025</em></p>
+<ul>
+<li>Served as primary TA for Web Software Development (React, FastAPI, AWS) across 2 semesters; built grading rubrics, independently evaluated projects, and coordinated a team of junior TAs for a <strong>180+ student cohort</strong>.</li>
+<li>Led labs and created assignments and exams for Graduate Algorithms (MS/PhD); delivered lectures in professor’s absence and held 5 hours of weekly office hours across both courses.</li>
+</ul>
+<h2>Technical Skills</h2>
+<ul>
+<li><strong>Languages:</strong> Go, Java, Python, TypeScript, JavaScript, SQL</li>
+<li><strong>Backend &amp; Systems:</strong> Distributed Systems, REST APIs, Node.js, FastAPI, React</li>
+<li><strong>Cloud &amp; DevOps:</strong> AWS (Glue, CDK, Fargate, Lambda, SQS/SNS), Docker, CI/CD, Git, Agile/Scrum, JUnit</li>
+<li><strong>Databases:</strong> PostgreSQL, MySQL, MongoDB, DuckDB, Vector DBs (HNSW)</li>
+<li><strong>AI &amp; Data:</strong> LLMs, RAG, Semantic Search, Embeddings, Vector Databases, OpenAI APIs, Anthropic Claude API, LangChain</li>
+</ul>
+<h2>Projects</h2>
+<h3>Raft Distributed Consensus Engine | Go, Distributed Systems, Concurrency, RPC</h3>
+<ul>
+<li>Implemented a Raft consensus engine in Go with automated leader election, log replication, and persistent state machines across distributed nodes.</li>
+<li>Validated correctness under simulated network partitions and cascading node failures across <strong>10+ clusters</strong>, achieving <strong>100% state consistency</strong> under split-brain conditions.</li>
+</ul>
+<h3>SmartBillAgent: Intelligent Billing &amp; Document Automation Platform | Python, Flask, Anthropic Claude API, Telegram Bot API, Docker</h3>
+<ul>
+<li>Production AI order automation platform processing multilingual customer orders across two storefronts, maintaining <strong>zero unplanned downtime over 1 year</strong>.</li>
+<li>Engineered a fault-tolerant multilingual semantic parser using Claude API to convert ambiguous customer messages in English, Hindi, and Sindhi into schema-validated order JSON, automating daily order processing workflows.</li>
+<li>Built an end-to-end document generation pipeline using Jinja2 templates and a Dockerized HTML-to-PDF microservice, delivering print-ready receipts in <strong>10–15 seconds</strong>, down from <strong>4–5 minutes</strong> manually.</li>
+</ul>
+<h2>Education</h2>
+<p><strong>Master of Science in Computer Science</strong> — University of Utah</p>
+<p><em>Aug 2023 – May 2025</em> | GPA: 4.0/4.0</p>
+<p><strong>Bachelor of Engineering in Computer Engineering</strong> — University of Mumbai</p>
+<p><em>Aug 2019 – May 2023</em> | GPA: 3.86/4.0</p>
+<h2>Publications</h2>
+<ul>
+<li>Akash Khatri, et al. “Sort it Like You Mean It: Discovering Semantically Interesting Attribute Augmentations to Sort Tables” | <em>Proceedings of the VLDB Endowment (PVLDB)</em>, Vol. 18, No. 12, 2025.</li>
+</ul></div>
+</div>
+<div class="card">
+  <h2>Cover letter</h2>
+  <div class="cover">Dear Stripe Hiring Team,
+
+I am excited to apply for the Backend Engineer, Core Technology role. As a Software Development Engineer at Amazon Music, I have hands-on experience building and scaling distributed systems that directly serve customer-facing products. I integrated Amazon Music’s in-app merch experience with centralized commerce services, enabling end-to-end merchandise ordering on a production system supporting 4,000 TPS. This required deep collaboration across teams and a strong focus on reliability and performance.
+
+I also have a proven track record of optimizing large-scale data pipelines. I migrated data providers across TB-scale AWS Glue ETL pipelines, reducing average job runtime by 27% (22 min → 16 min) and eliminating redundant job execution that cut $50K+ in annual infrastructure costs. My work on the Raft Distributed Consensus Engine in Go further demonstrates my ability to design and validate fault-tolerant distributed systems, achieving 100% state consistency under simulated network partitions.
+
+Stripe’s mission to increase the GDP of the internet resonates with my passion for building infrastructure that empowers businesses. I thrive in autonomous environments and am eager to contribute to Stripe’s core infrastructure team. Thank you for considering my application.
+
+Sincerely,
+Akash Khatri
+</div>
+</div>
+<footer>Generated by the job agent static site builder.</footer>
+</div>
+</body>
+</html>
