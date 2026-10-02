@@ -241,3 +241,24 @@ footer{border-top:1px solid var(--line);margin-top:44px;padding:26px 0 10px;
   .fstep .fill{transition:none;width:var(--w,0%)}
   html{scroll-behavior:auto}
 }
+
+/* ---------- agent controls ---------- */
+.ctl-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:18px 0 6px}
+.btn{appearance:none;border:1px solid var(--line);background:#fff;border-radius:12px;
+  padding:11px 18px;font-weight:700;font-size:14px;cursor:pointer;color:var(--ink);
+  box-shadow:0 2px 8px rgba(10,10,10,.05);transition:transform .12s ease,box-shadow .12s ease}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 16px rgba(10,10,10,.08)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-dark{background:#17171c;color:#fff;border-color:#17171c}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff}
+#api-status{font-size:13px}
+#api-status.ok{color:#15803d}
+#api-status.err{color:#b91c1c}
+.selcol{width:34px;text-align:center}
+.apply-sel{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+#apply-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0;
+  padding:12px 16px;border:1px dashed var(--line);border-radius:12px;background:#fafafa}
+.policy-line{font-size:13px;color:var(--faint);margin-top:10px}
+.pulse-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px}
+.pulse-dot.busy{background:#f59e0b;animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.35}}

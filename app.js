@@ -116,6 +116,13 @@
     });
   }
 
+  /* ---------- bulk-apply selection state ---------- */
+  var selectedJobs = {};
+  var APP_ACTIVE = {submitted: 1, approved: 1, queued: 1, pending: 1, running: 1, blocked: 1};
+  function jobSelectable(x){
+    return x && (x.score >= 65) && !APP_ACTIVE[x.app];
+  }
+
   /* ---------- matches table ---------- */
   var rows = window.MATCHES || [];
   var tbody = document.getElementById("mtbody");
@@ -156,13 +163,39 @@
            + " of " + total + " matches")
         : "No matches for these filters.";
       tbody.innerHTML = slice.map(function(x){
-        return "<tr><td>" + ring(x.score) + "</td><td><strong>" + escHtml(x.company) + "</strong></td>"
+        var canSel = jobSelectable(x);
+        var whyNot = x.app ? ("Status: " + x.app) : "Score below 65";
+        var cb = canSel
+          ? '<input type="checkbox" class="apply-sel" data-job="' + x.job_id + '"'
+            + (selectedJobs[x.job_id] ? " checked" : "") + ' title="Queue for application">'
+          : '<span class="muted" title="' + escHtml(whyNot) + '">—</span>';
+        return "<tr><td>" + cb + "</td><td>" + ring(x.score) + "</td><td><strong>" + escHtml(x.company) + "</strong></td>"
           + "<td>" + escHtml(x.title) + "</td><td>" + escHtml(x.location) + "</td>"
           + '<td><span class="tag ' + (x.source === "greenhouse" ? "gh" : "ashby") + '">'
           + escHtml(x.source) + "</span></td>"
           + '<td><a href="' + escHtml(x.url) + '" target="_blank" rel="noopener">posting&nbsp;→</a></td></tr>';
       }).join("");
       animateRings(tbody);
+      tbody.querySelectorAll(".apply-sel").forEach(function(cb){
+        cb.addEventListener("change", function(){
+          var jid = cb.getAttribute("data-job");
+          if(cb.checked){ selectedJobs[jid] = true; } else { delete selectedJobs[jid]; }
+          updateApplyBar();
+        });
+      });
+      var selAll = document.getElementById("sel-all");
+      if(selAll){
+        selAll.checked = false;
+        selAll.onchange = function(){
+          tbody.querySelectorAll(".apply-sel").forEach(function(cb){
+            cb.checked = selAll.checked;
+            var jid = cb.getAttribute("data-job");
+            if(selAll.checked){ selectedJobs[jid] = true; } else { delete selectedJobs[jid]; }
+          });
+          updateApplyBar();
+        };
+      }
+      updateApplyBar();
       document.querySelectorAll("th[data-k]").forEach(function(th){
         var k = th.getAttribute("data-k");
         var base = th.textContent.replace(/[\s▴▾]+$/, "");
@@ -259,5 +292,125 @@
     fcname.addEventListener("input", function(){ cPage = 1; cRender(); });
     cRender();
   }
+  /* ---------- agent API: refresh + bulk apply ---------- */
+  var apiBase = null;
+
+  function setApiStatus(msg, cls){
+    var el = document.getElementById("api-status");
+    if(!el) return;
+    el.className = "muted " + (cls || "");
+    el.innerHTML = '<span class="pulse-dot' + (cls === "busy" ? " busy" : "") + '"></span>' + escHtml(msg);
+  }
+
+  function api(path, opts){
+    opts = opts || {};
+    opts.headers = Object.assign({"Content-Type": "application/json"}, opts.headers || {});
+    return fetch(apiBase + path, opts).then(function(r){
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function updateApplyBar(){
+    var bar = document.getElementById("apply-bar");
+    var btn = document.getElementById("btn-apply-sel");
+    if(!bar || !btn) return;
+    var n = Object.keys(selectedJobs).length;
+    bar.style.display = "flex";
+    btn.disabled = !n || !apiBase;
+    btn.textContent = "Apply for selected (" + n + ")";
+  }
+
+  function pollRefresh(){
+    api("/api/status").then(function(s){
+      var r = (s && s.refresh) || {};
+      if(r.state === "running"){
+        setApiStatus(r.message || "Refreshing…", "busy");
+        setTimeout(pollRefresh, 15000);
+      } else {
+        var btn = document.getElementById("btn-refresh");
+        if(btn) btn.disabled = false;
+        if(r.state === "done"){
+          setApiStatus("Done — reloading dashboard…", "ok");
+          setTimeout(function(){ location.reload(); }, 2500);
+        } else {
+          setApiStatus(r.message || ("Refresh " + r.state), r.state === "error" ? "err" : "");
+        }
+      }
+    }).catch(function(){
+      setTimeout(pollRefresh, 30000);
+    });
+  }
+
+  function initAgentControls(){
+    var refBtn = document.getElementById("btn-refresh");
+    if(refBtn){
+      refBtn.addEventListener("click", function(){
+        if(!apiBase) return;
+        refBtn.disabled = true;
+        setApiStatus("Refresh started — sweeping boards, this takes a while…", "busy");
+        api("/api/refresh", {method: "POST", body: "{}"}).then(function(res){
+          if(res && res.started === false){
+            setApiStatus(res.reason || "Refresh already running.", "busy");
+            refBtn.disabled = false;
+          } else {
+            pollRefresh();
+          }
+        }).catch(function(e){
+          setApiStatus("Could not start refresh: " + e.message, "err");
+          refBtn.disabled = false;
+        });
+      });
+    }
+    var applyBtn = document.getElementById("btn-apply-sel");
+    if(applyBtn){
+      applyBtn.addEventListener("click", function(){
+        var ids = Object.keys(selectedJobs).map(function(k){ return +k; });
+        if(!ids.length || !apiBase) return;
+        if(!confirm("Queue " + ids.length + " application(s)? The agent will tailor each résumé and submit.")) return;
+        applyBtn.disabled = true;
+        api("/api/apply", {method: "POST", body: JSON.stringify({job_ids: ids})}).then(function(res){
+          var ok = (res.accepted || []).length;
+          var msg = "Queued " + ok + " of " + ids.length + ". The agent picks them up within minutes.";
+          if(res.rejected && res.rejected.length){
+            msg += " Skipped: " + res.rejected.map(function(r){ return "job " + r.job_id + " (" + r.reason + ")"; }).join(", ");
+          }
+          setApiStatus(msg, "ok");
+          (res.accepted || []).forEach(function(jid){
+            var cb = document.querySelector('.apply-sel[data-job="' + jid + '"]');
+            if(cb){ cb.disabled = true; cb.checked = false; }
+            delete selectedJobs[String(jid)];
+          });
+          updateApplyBar();
+        }).catch(function(e){
+          setApiStatus("Queue failed: " + e.message, "err");
+          updateApplyBar();
+        });
+      });
+    }
+    api("/api/status").then(function(s){
+      var q = (s && s.queue) || {};
+      if(q.queued){
+        setApiStatus(q.queued + " application(s) waiting in the agent queue.", "busy");
+      }
+    }).catch(function(){});
+  }
+
+  fetch("api-config.json").then(function(r){
+    if(!r.ok) throw new Error("no config");
+    return r.json();
+  }).then(function(c){
+    if(c && c.api_base){
+      apiBase = String(c.api_base).replace(/\/+$/, "");
+      setApiStatus("Agent API connected.", "ok");
+      initAgentControls();
+    } else {
+      setApiStatus("Agent API not configured yet.", "");
+    }
+    updateApplyBar();
+  }).catch(function(){
+    setApiStatus("Agent API unreachable — controls disabled.", "err");
+    updateApplyBar();
+  });
 })();
 /* end app.js */
