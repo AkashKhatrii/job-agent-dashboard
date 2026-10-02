@@ -86,6 +86,35 @@
       });
     });
   }
+  function escHtml(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(m){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m];
+    });
+  }
+  function renderPagerInto(el, pages, page, go){
+    if(pages <= 1){ el.innerHTML = ""; el.style.display = "none"; return; }
+    el.style.display = "flex";
+    var html = '<button class="pgbtn" data-pg="' + (page - 1) + '"'
+      + (page === 1 ? " disabled" : "") + ">← Prev</button>";
+    var prev = 0;
+    for(var i = 1; i <= pages; i++){
+      if(i === 1 || i === pages || Math.abs(i - page) <= 2){
+        if(i - prev > 1) html += '<span class="pgdots">…</span>';
+        html += '<button class="pgbtn' + (i === page ? " on" : "") + '" data-pg="' + i + '">'
+          + i + "</button>";
+        prev = i;
+      }
+    }
+    html += '<button class="pgbtn" data-pg="' + (page + 1) + '"'
+      + (page === pages ? " disabled" : "") + ">Next →</button>";
+    el.innerHTML = html;
+    el.querySelectorAll(".pgbtn[data-pg]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var p = parseInt(b.getAttribute("data-pg"), 10);
+        if(p >= 1 && p <= pages && p !== page) go(p);
+      });
+    });
+  }
 
   /* ---------- matches table ---------- */
   var rows = window.MATCHES || [];
@@ -98,11 +127,6 @@
     var sortKey = "score", sortDir = -1;
     var pageSize = 25, page = 1;
 
-    function escHtml(s){
-      return String(s == null ? "" : s).replace(/[&<>"']/g, function(m){
-        return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m];
-      });
-    }
     function filtered(){
       var qc = fCompany.value.toLowerCase(), ql = fLoc.value.toLowerCase(),
           qs = fSource.value;
@@ -141,39 +165,13 @@
       animateRings(tbody);
       document.querySelectorAll("th[data-k]").forEach(function(th){
         var k = th.getAttribute("data-k");
-        var base = th.textContent.replace(/[\s▲▼]+$/, "");
+        var base = th.textContent.replace(/[\s▴▾]+$/, "");
         th.innerHTML = escHtml(base) + ' <span class="arr">'
           + (k === sortKey ? (sortDir === -1 ? "▾" : "▴") : "") + "</span>";
       });
-      renderPager(pages);
-    }
-    function renderPager(pages){
-      var el = document.getElementById("pager");
-      if(pages <= 1){ el.innerHTML = ""; el.style.display = "none"; return; }
-      el.style.display = "flex";
-      var html = '<button class="pgbtn" data-pg="' + (page - 1) + '"'
-        + (page === 1 ? " disabled" : "") + ">← Prev</button>";
-      var prev = 0;
-      for(var i = 1; i <= pages; i++){
-        if(i === 1 || i === pages || Math.abs(i - page) <= 2){
-          if(i - prev > 1) html += '<span class="pgdots">…</span>';
-          html += '<button class="pgbtn' + (i === page ? " on" : "") + '" data-pg="' + i + '">'
-            + i + "</button>";
-          prev = i;
-        }
-      }
-      html += '<button class="pgbtn" data-pg="' + (page + 1) + '"'
-        + (page === pages ? " disabled" : "") + ">Next →</button>";
-      el.innerHTML = html;
-      el.querySelectorAll(".pgbtn[data-pg]").forEach(function(b){
-        b.addEventListener("click", function(){
-          var p = parseInt(b.getAttribute("data-pg"), 10);
-          if(p >= 1 && p <= pages && p !== page){
-            page = p; render();
-            document.getElementById("matches")
-              .scrollIntoView({behavior:"smooth", block:"start"});
-          }
-        });
+      renderPagerInto(document.getElementById("pager"), pages, page, function(p){
+        page = p; render();
+        document.getElementById("matches").scrollIntoView({behavior:"smooth", block:"start"});
       });
     }
     document.querySelectorAll("th[data-k]").forEach(function(th){
@@ -188,6 +186,78 @@
       el.addEventListener("input", function(){ page = 1; render(); });
     });
     render();
+  }
+
+  /* ---------- companies directory ---------- */
+  if(document.getElementById("ctbody")){
+    var crows = window.COMPANIES || [];
+    var cPageSize = 12, cPage = 1, cSortKey = "matches", cSortDir = -1;
+    var ctbody = document.getElementById("ctbody");
+    var ccount = document.getElementById("ccount");
+    var cpager = document.getElementById("cpager");
+    var fcname = document.getElementById("f-cname");
+
+    function cFiltered(){
+      var q = fcname.value.trim().toLowerCase();
+      var r = crows.filter(function(x){
+        return !q || x.company.toLowerCase().indexOf(q) !== -1;
+      });
+      var k = cSortKey, d = cSortDir;
+      return r.slice().sort(function(a, b){
+        var va = (k === "source") ? a.sources.join(",") : a[k];
+        var vb = (k === "source") ? b.sources.join(",") : b[k];
+        if(va == null) va = -1;
+        if(vb == null) vb = -1;
+        var c = (typeof va === "string") ? va.localeCompare(vb) : (va - vb);
+        return c * d;
+      });
+    }
+    function cRender(){
+      var r = cFiltered();
+      var total = r.length;
+      var pages = Math.max(1, Math.ceil(total / cPageSize));
+      if(cPage > pages) cPage = pages;
+      if(cPage < 1) cPage = 1;
+      var start = (cPage - 1) * cPageSize;
+      var slice = r.slice(start, start + cPageSize);
+      ccount.textContent = total
+        ? ("Showing " + (start + 1) + "–" + Math.min(start + cPageSize, total)
+           + " of " + total + " companies")
+        : "No companies match that filter.";
+      ctbody.innerHTML = slice.map(function(x){
+        var tags = x.sources.map(function(s){
+          return '<span class="tag ' + (s === "greenhouse" ? "gh" : "ashby") + '">'
+            + escHtml(s) + "</span>";
+        }).join(" ");
+        var top = (x.top == null) ? '<span class="muted">—</span>' : ring(x.top);
+        return "<tr><td><strong>" + escHtml(x.company) + "</strong></td><td>" + tags + "</td>"
+          + '<td class="num">' + x.postings.toLocaleString() + "</td>"
+          + '<td class="num">' + x.matches + "</td>"
+          + "<td>" + top + "</td></tr>";
+      }).join("");
+      animateRings(ctbody);
+      document.querySelectorAll("th[data-ck]").forEach(function(th){
+        var k = th.getAttribute("data-ck");
+        var base = th.textContent.replace(/[\s▴▾]+$/, "");
+        th.innerHTML = escHtml(base) + ' <span class="arr">'
+          + (k === cSortKey ? (cSortDir === -1 ? "▾" : "▴") : "") + "</span>";
+      });
+      renderPagerInto(cpager, pages, cPage, function(p){
+        cPage = p; cRender();
+        document.getElementById("companies")
+          .scrollIntoView({behavior:"smooth", block:"start"});
+      });
+    }
+    document.querySelectorAll("th[data-ck]").forEach(function(th){
+      th.addEventListener("click", function(){
+        var k = th.getAttribute("data-ck");
+        if(k === cSortKey){ cSortDir = -cSortDir; }
+        else { cSortKey = k; cSortDir = (k === "company" || k === "source") ? 1 : -1; }
+        cPage = 1; cRender();
+      });
+    });
+    fcname.addEventListener("input", function(){ cPage = 1; cRender(); });
+    cRender();
   }
 })();
 /* end app.js */

@@ -177,12 +177,7 @@ a{color:var(--accent-deep);text-decoration:none}
 a:hover{text-decoration:underline}
 
 /* ---------- company grid ---------- */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
-.cocard{background:#fff;border:1px solid var(--line);border-radius:var(--r-md);
-  padding:16px 18px;transition:transform .35s var(--ease),box-shadow .35s}
-.cocard:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
-.cocard .n{font-weight:700;letter-spacing:-.01em}
-.cocard .c{font-size:13px;color:var(--muted);margin-top:3px}
+.num{text-align:right !important}
 
 /* ---------- packet cards ---------- */
 .pkt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
