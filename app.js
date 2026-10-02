@@ -96,6 +96,7 @@
     var fLoc = document.getElementById("f-loc");
     var fSource = document.getElementById("f-source");
     var sortKey = "score", sortDir = -1;
+    var pageSize = 25, page = 1;
 
     function escHtml(s){
       return String(s == null ? "" : s).replace(/[&<>"']/g, function(m){
@@ -120,8 +121,17 @@
     }
     function render(){
       var r = filtered();
-      count.textContent = r.length + " of " + rows.length + " matches";
-      tbody.innerHTML = r.map(function(x){
+      var total = r.length;
+      var pages = Math.max(1, Math.ceil(total / pageSize));
+      if(page > pages) page = pages;
+      if(page < 1) page = 1;
+      var start = (page - 1) * pageSize;
+      var slice = r.slice(start, start + pageSize);
+      count.textContent = total
+        ? ("Showing " + (start + 1) + "–" + Math.min(start + pageSize, total)
+           + " of " + total + " matches")
+        : "No matches for these filters.";
+      tbody.innerHTML = slice.map(function(x){
         return "<tr><td>" + ring(x.score) + "</td><td><strong>" + escHtml(x.company) + "</strong></td>"
           + "<td>" + escHtml(x.title) + "</td><td>" + escHtml(x.location) + "</td>"
           + '<td><span class="tag ' + (x.source === "greenhouse" ? "gh" : "ashby") + '">'
@@ -135,16 +145,48 @@
         th.innerHTML = escHtml(base) + ' <span class="arr">'
           + (k === sortKey ? (sortDir === -1 ? "▾" : "▴") : "") + "</span>";
       });
+      renderPager(pages);
+    }
+    function renderPager(pages){
+      var el = document.getElementById("pager");
+      if(pages <= 1){ el.innerHTML = ""; el.style.display = "none"; return; }
+      el.style.display = "flex";
+      var html = '<button class="pgbtn" data-pg="' + (page - 1) + '"'
+        + (page === 1 ? " disabled" : "") + ">← Prev</button>";
+      var prev = 0;
+      for(var i = 1; i <= pages; i++){
+        if(i === 1 || i === pages || Math.abs(i - page) <= 2){
+          if(i - prev > 1) html += '<span class="pgdots">…</span>';
+          html += '<button class="pgbtn' + (i === page ? " on" : "") + '" data-pg="' + i + '">'
+            + i + "</button>";
+          prev = i;
+        }
+      }
+      html += '<button class="pgbtn" data-pg="' + (page + 1) + '"'
+        + (page === pages ? " disabled" : "") + ">Next →</button>";
+      el.innerHTML = html;
+      el.querySelectorAll(".pgbtn[data-pg]").forEach(function(b){
+        b.addEventListener("click", function(){
+          var p = parseInt(b.getAttribute("data-pg"), 10);
+          if(p >= 1 && p <= pages && p !== page){
+            page = p; render();
+            document.getElementById("matches")
+              .scrollIntoView({behavior:"smooth", block:"start"});
+          }
+        });
+      });
     }
     document.querySelectorAll("th[data-k]").forEach(function(th){
       th.addEventListener("click", function(){
         var k = th.getAttribute("data-k");
         if(k === sortKey){ sortDir = -sortDir; }
         else { sortKey = k; sortDir = (k === "score" ? -1 : 1); }
-        render();
+        page = 1; render();
       });
     });
-    [fCompany, fLoc, fSource].forEach(function(el){ el.addEventListener("input", render); });
+    [fCompany, fLoc, fSource].forEach(function(el){
+      el.addEventListener("input", function(){ page = 1; render(); });
+    });
     render();
   }
 })();
