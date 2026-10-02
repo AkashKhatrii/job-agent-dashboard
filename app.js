@@ -292,9 +292,11 @@
     fcname.addEventListener("input", function(){ cPage = 1; cRender(); });
     cRender();
   }
-  /* ---------- agent commands via email ---------- */
-  /* The dashboard is static; commands go out as pre-filled emails the user
-     sends to themselves, and the agent picks them up from Gmail Sent. */
+  /* ---------- agent commands: relay API (fallback: email) ---------- */
+  /* Primary: POST to the Google Apps Script relay; the VM polls it every
+     few minutes. Fallback (relay not configured): pre-filled email. */
+  var RELAY_URL = "https://script.google.com/macros/s/AKfycbwWZTmJT1SFA0Uvums62qR_Gje1MQbAsyRX53S9XnloQDLNMGRxGNy8Dm1KWYzk5UOg7A/exec";
+  var RELAY_SECRET = "v5IVFMKVur31cS7UqE_YJBZk18QH5jDMrPix6wKzCuM";
   var CMD_EMAIL = "akash.m.khatri@gmail.com";
 
   function setApiStatus(msg, cls){
@@ -308,6 +310,23 @@
     window.location.href = "mailto:" + encodeURIComponent(CMD_EMAIL)
       + "?subject=" + encodeURIComponent(subject)
       + "&body=" + encodeURIComponent(body);
+  }
+
+  function sendCommand(cmd, jobIds, done){
+    if(RELAY_URL){
+      fetch(RELAY_URL, {
+        method: "POST", mode: "no-cors",
+        headers: {"Content-Type": "text/plain"},
+        body: JSON.stringify({secret: RELAY_SECRET, cmd: cmd, job_ids: jobIds || []})
+      }).then(function(){ done(true); }, function(){ done(false); });
+    } else {
+      var subject = cmd === "REFRESH" ? "JOBAGENT REFRESH" : "JOBAGENT APPLY";
+      var body = cmd === "APPLY"
+        ? "job_ids: " + (jobIds || []).join(", ")
+        : "Run today's job discovery and scoring, then rebuild this dashboard.";
+      mailtoCmd(subject, body);
+      done(true);
+    }
   }
 
   function updateApplyBar(){
@@ -324,9 +343,15 @@
     var refBtn = document.getElementById("btn-refresh");
     if(refBtn){
       refBtn.addEventListener("click", function(){
-        mailtoCmd("JOBAGENT REFRESH",
-          "Run today's job discovery and scoring, then rebuild this dashboard.");
-        setApiStatus("Email opened — hit Send and the agent will refresh jobs within ~10 minutes.", "busy");
+        refBtn.disabled = true;
+        sendCommand("REFRESH", [], function(ok){
+          refBtn.disabled = false;
+          if(RELAY_URL){
+            setApiStatus(ok ? "Refresh command sent — the agent will pick it up within a couple minutes." : "Could not reach the relay.", ok ? "busy" : "err");
+          } else {
+            setApiStatus("Email opened — hit Send and the agent will refresh jobs within ~10 minutes.", "busy");
+          }
+        });
       });
     }
     var applyBtn = document.getElementById("btn-apply-sel");
@@ -334,9 +359,16 @@
       applyBtn.addEventListener("click", function(){
         var ids = Object.keys(selectedJobs).map(function(k){ return +k; });
         if(!ids.length) return;
-        if(!confirm("Queue " + ids.length + " application(s)? This opens a pre-filled email — hit Send and the agent will validate, tailor each résumé, and apply within minutes.")) return;
-        mailtoCmd("JOBAGENT APPLY", "job_ids: " + ids.join(", "));
-        setApiStatus("Email opened — hit Send to queue " + ids.length + " application(s).", "ok");
+        if(!confirm("Queue " + ids.length + " application(s)? The agent will validate, tailor each résumé, and apply within minutes.")) return;
+        applyBtn.disabled = true;
+        sendCommand("APPLY", ids, function(ok){
+          if(RELAY_URL){
+            setApiStatus(ok ? "Queued " + ids.length + " application(s) — the agent picks them up within minutes." : "Could not reach the relay.", ok ? "ok" : "err");
+          } else {
+            setApiStatus("Email opened — hit Send to queue " + ids.length + " application(s).", "ok");
+          }
+          updateApplyBar();
+        });
       });
     }
     fetch("status.json").then(function(r){
