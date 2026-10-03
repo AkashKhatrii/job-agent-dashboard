@@ -313,6 +313,26 @@
   }
 
   function sendCommand(cmd, jobIds, done){
+    if(cmd === "APPLY"){
+      // Prefer the Mac Apply Agent on localhost (fast local browser automation).
+      // Falls back to the relay/email flow if the Mac server is not running.
+      sendToMac(jobIds, function(macOk, macQueued){
+        if(macOk){ done("mac", macQueued); return; }
+        if(RELAY_URL){
+          fetch(RELAY_URL, {
+            method: "POST", mode: "no-cors",
+            headers: {"Content-Type": "text/plain"},
+            body: JSON.stringify({secret: RELAY_SECRET, cmd: cmd, job_ids: jobIds || []})
+          }).then(function(){ done("relay", 0); }, function(){ done(false, 0); });
+        } else {
+          var subject = "JOBAGENT APPLY";
+          var body = "job_ids: " + (jobIds || []).join(", ");
+          mailtoCmd(subject, body);
+          done("email", 0);
+        }
+      });
+      return;
+    }
     if(RELAY_URL){
       fetch(RELAY_URL, {
         method: "POST", mode: "no-cors",
@@ -321,12 +341,38 @@
       }).then(function(){ done(true); }, function(){ done(false); });
     } else {
       var subject = cmd === "REFRESH" ? "JOBAGENT REFRESH" : "JOBAGENT APPLY";
-      var body = cmd === "APPLY"
-        ? "job_ids: " + (jobIds || []).join(", ")
-        : "Run today's job discovery and scoring, then rebuild this dashboard.";
+      var body = "Run today's job discovery and scoring, then rebuild this dashboard.";
       mailtoCmd(subject, body);
       done(true);
     }
+  }
+
+  var MAC_APPLY_URL = "http://127.0.0.1:8765/apply";
+
+  function sendToMac(jobIds, done){
+    // Map selected job ids to their apply URLs from the embedded matches.
+    var byId = {};
+    (window.MATCHES || []).forEach(function(m){ byId[m.job_id] = m.url; });
+    var urls = (jobIds || []).map(function(id){ return byId[id]; })
+      .filter(function(u){ return u && u.indexOf("greenhouse.io") !== -1; });
+    if(!urls.length){ done(false, 0); return; }
+    var ctrl = new AbortController();
+    var timer = setTimeout(function(){ ctrl.abort(); }, 4000);
+    fetch(MAC_APPLY_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({urls: urls}),
+      signal: ctrl.signal
+    }).then(function(r){
+      clearTimeout(timer);
+      if(!r.ok) throw new Error("bad status");
+      return r.json();
+    }).then(function(j){
+      done(true, j.queued || 0);
+    }).catch(function(){
+      clearTimeout(timer);
+      done(false, 0);
+    });
   }
 
   function updateApplyBar(){
@@ -361,11 +407,13 @@
         if(!ids.length) return;
         if(!confirm("Queue " + ids.length + " application(s)? The agent will validate, tailor each résumé, and apply within minutes.")) return;
         applyBtn.disabled = true;
-        sendCommand("APPLY", ids, function(ok){
-          if(RELAY_URL){
-            setApiStatus(ok ? "Queued " + ids.length + " application(s) — the agent picks them up within minutes." : "Could not reach the relay.", ok ? "ok" : "err");
+        sendCommand("APPLY", ids, function(where, macQueued){
+          if(where === "mac"){
+            setApiStatus("Sent " + (macQueued || ids.length) + " job(s) to your Mac — applying now.", "ok");
+          } else if(RELAY_URL){
+            setApiStatus(where ? "Queued " + ids.length + " application(s) — the agent picks them up within minutes." : "Could not reach the relay.", where ? "ok" : "err");
           } else {
-            setApiStatus("Email opened — hit Send to queue " + ids.length + " application(s).", "ok");
+            setApiStatus("Mac server not running and no relay — email opened, hit Send to queue " + ids.length + " application(s).", "ok");
           }
           updateApplyBar();
         });
