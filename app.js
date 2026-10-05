@@ -348,6 +348,45 @@
   }
 
   var MAC_APPLY_URL = "http://127.0.0.1:8765/apply";
+  var MAC_STATUS_URL = "http://127.0.0.1:8765/status";
+
+  function pollMacStatus(){
+    var el = document.getElementById("mac-status");
+    if(!el) return;
+    var ctrl = new AbortController();
+    var timer = setTimeout(function(){ ctrl.abort(); }, 4000);
+    fetch(MAC_STATUS_URL, {signal: ctrl.signal}).then(function(r){
+      clearTimeout(timer);
+      if(!r.ok) throw new Error("bad status");
+      return r.json();
+    }).then(function(s){
+      var parts = [];
+      if(s.running){
+        parts.push("applying: " + (s.current_url || "").replace("https://job-boards.greenhouse.io/", ""));
+        parts.push("watch the visible browser on your Mac");
+      } else {
+        parts.push("idle");
+      }
+      if(s.queued && s.queued.length) parts.push(s.queued.length + " queued");
+      parts.push((s.applied_count || 0) + " applied from this Mac");
+      var recent = (s.recent && s.recent[0]) || null;
+      var html = '<span class="pulse-dot' + (s.running ? " busy" : "") + '"></span>' +
+        "Mac: " + escHtml(parts.join(" · "));
+      if(recent){
+        html += "<br>" + (recent.ok ? "last run: submitted ✓" : "last run: failed") +
+          " " + escHtml((recent.company || "") + (recent.title ? " — " + recent.title : "")) +
+          (recent.ok && recent.confirmation_url
+            ? ' <a href="' + escHtml(recent.confirmation_url) + '" target="_blank">confirmation</a>'
+            : "") +
+          (!recent.ok && recent.error ? " — " + escHtml(String(recent.error).slice(0, 140)) : "");
+      }
+      el.innerHTML = html;
+    }).catch(function(){
+      clearTimeout(timer);
+      el.innerHTML = "Mac server not running — Apply buttons will use the relay/email fallback. " +
+        "Start it with: <code>launchctl load ~/Library/LaunchAgents/com.akash.job-agent-automation.server.plist</code>";
+    });
+  }
 
   function sendToMac(jobIds, done){
     // Map selected job ids to their apply URLs from the embedded matches.
@@ -432,6 +471,8 @@
       setApiStatus("The agent checks for emailed commands every ~10 minutes.", "");
     });
     updateApplyBar();
+    pollMacStatus();
+    setInterval(pollMacStatus, 15000);
   }
   initAgentControls();
 ;
