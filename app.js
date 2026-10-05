@@ -316,19 +316,19 @@
     if(cmd === "APPLY"){
       // Prefer the Mac Apply Agent on localhost (fast local browser automation).
       // Falls back to the relay/email flow if the Mac server is not running.
-      sendToMac(jobIds, function(macOk, macQueued){
+      sendToMac(jobIds, function(macOk, macQueued, reason){
         if(macOk){ done("mac", macQueued); return; }
         if(RELAY_URL){
           fetch(RELAY_URL, {
             method: "POST", mode: "no-cors",
             headers: {"Content-Type": "text/plain"},
             body: JSON.stringify({secret: RELAY_SECRET, cmd: cmd, job_ids: jobIds || []})
-          }).then(function(){ done("relay", 0); }, function(){ done(false, 0); });
+          }).then(function(){ done("relay", 0, reason); }, function(){ done(false, 0, reason); });
         } else {
           var subject = "JOBAGENT APPLY";
           var body = "job_ids: " + (jobIds || []).join(", ");
           mailtoCmd(subject, body);
-          done("email", 0);
+          done("email", 0, reason);
         }
       });
       return;
@@ -361,9 +361,14 @@
       return r.json();
     }).then(function(s){
       var parts = [];
+      // Map a Mac URL back to "Company — Title" from the embedded matches.
+      function labelFor(url){
+        var lbl = null;
+        (window.MATCHES || []).forEach(function(m){ if(m.url === url) lbl = m.company + " — " + m.title; });
+        return lbl || String(url || "").replace("https://job-boards.greenhouse.io/", "");
+      }
       if(s.running){
-        parts.push("applying: " + (s.current_url || "").replace("https://job-boards.greenhouse.io/", ""));
-        parts.push("watch the visible browser on your Mac");
+        parts.push("applying: " + labelFor(s.current_url));
       } else {
         parts.push("idle");
       }
@@ -372,9 +377,14 @@
       var recent = (s.recent && s.recent[0]) || null;
       var html = '<span class="pulse-dot' + (s.running ? " busy" : "") + '"></span>' +
         "Mac: " + escHtml(parts.join(" · "));
+      if(s.running){
+        html += '<br><img src="http://127.0.0.1:8765/live.png?t=' + Date.now() + '"' +
+          ' style="max-width:640px;width:100%;border:1px solid #444;border-radius:8px;margin-top:8px;"' +
+          ' onerror="this.remove()" alt="live browser view">';
+      }
       if(recent){
         html += "<br>" + (recent.ok ? "last run: submitted ✓" : "last run: failed") +
-          " " + escHtml((recent.company || "") + (recent.title ? " — " + recent.title : "")) +
+          " " + escHtml(labelFor(recent.url)) +
           (recent.ok && recent.confirmation_url
             ? ' <a href="' + escHtml(recent.confirmation_url) + '" target="_blank">confirmation</a>'
             : "") +
@@ -394,7 +404,7 @@
     (window.MATCHES || []).forEach(function(m){ byId[m.job_id] = m.url; });
     var urls = (jobIds || []).map(function(id){ return byId[id]; })
       .filter(function(u){ return u && u.indexOf("greenhouse.io") !== -1; });
-    if(!urls.length){ done(false, 0); return; }
+    if(!urls.length){ done(false, 0, "nogreenhouse"); return; }
     var ctrl = new AbortController();
     var timer = setTimeout(function(){ ctrl.abort(); }, 4000);
     fetch(MAC_APPLY_URL, {
@@ -410,7 +420,7 @@
       done(true, j.queued || 0);
     }).catch(function(){
       clearTimeout(timer);
-      done(false, 0);
+      done(false, 0, "macdown");
     });
   }
 
@@ -446,11 +456,15 @@
         if(!ids.length) return;
         if(!confirm("Queue " + ids.length + " application(s)? The agent will validate, tailor each résumé, and apply within minutes.")) return;
         applyBtn.disabled = true;
-        sendCommand("APPLY", ids, function(where, macQueued){
+        sendCommand("APPLY", ids, function(where, macQueued, reason){
           if(where === "mac"){
-            setApiStatus("Sent " + (macQueued || ids.length) + " job(s) to your Mac — applying now.", "ok");
+            setApiStatus("Sent " + (macQueued || ids.length) + " job(s) to your Mac — applying now. Watch the visible browser window.", "ok");
           } else if(RELAY_URL){
-            setApiStatus(where ? "Queued " + ids.length + " application(s) — the agent picks them up within minutes." : "Could not reach the relay.", where ? "ok" : "err");
+            if(reason === "nogreenhouse"){
+              setApiStatus("Not Greenhouse job(s) — your Mac only applies to Greenhouse. Queued " + ids.length + " with the cloud agent instead (runs invisibly; results appear here).", "ok");
+            } else {
+              setApiStatus(where ? "Queued " + ids.length + " application(s) — the agent picks them up within minutes." : "Could not reach the relay.", where ? "ok" : "err");
+            }
           } else {
             setApiStatus("Mac server not running and no relay — email opened, hit Send to queue " + ids.length + " application(s).", "ok");
           }
