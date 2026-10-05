@@ -403,7 +403,7 @@
     var byId = {};
     (window.MATCHES || []).forEach(function(m){ byId[m.job_id] = m.url; });
     var urls = (jobIds || []).map(function(id){ return byId[id]; })
-      .filter(function(u){ return u && u.indexOf("greenhouse.io") !== -1; });
+      .filter(function(u){ return u && (u.indexOf("greenhouse.io") !== -1 || u.indexOf("gh_jid") !== -1); });
     if(!urls.length){ done(false, 0, "nogreenhouse"); return; }
     var ctrl = new AbortController();
     var timer = setTimeout(function(){ ctrl.abort(); }, 4000);
@@ -461,7 +461,7 @@
             setApiStatus("Sent " + (macQueued || ids.length) + " job(s) to your Mac — applying now. Watch the visible browser window.", "ok");
           } else if(RELAY_URL){
             if(reason === "nogreenhouse"){
-              setApiStatus("Not Greenhouse job(s) — your Mac only applies to Greenhouse. Queued " + ids.length + " with the cloud agent instead (runs invisibly; results appear here).", "ok");
+              setApiStatus("Not a Greenhouse-powered job — your Mac only applies to Greenhouse. Queued " + ids.length + " with the cloud agent instead (runs invisibly; results appear here).", "ok");
             } else {
               setApiStatus(where ? "Queued " + ids.length + " application(s) — the agent picks them up within minutes." : "Could not reach the relay.", where ? "ok" : "err");
             }
